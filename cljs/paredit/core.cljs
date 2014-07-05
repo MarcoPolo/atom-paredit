@@ -1,4 +1,5 @@
-(ns paredit.core)
+(ns paredit.core
+  (:require [clojure.string :as str]))
 
 (defn deactivate [& args]
   (.log js/console "bye world from clojurescript!!"))
@@ -106,7 +107,13 @@
   "returns the deleted character"
   [editor cursor-position])
 
+(defn replace-char-at-position [editor cursor-position character])
+
 (defn insert-char-at-position [editor cursor-position character])
+
+(defn previous-word
+  "Takes you to the start of the previous word"
+  [editor cursor-position])
   
 (defn forward-slurp [editor cursor-position]
   ;; to forward slurp we find the first closing tag
@@ -122,8 +129,29 @@
     (if (closing-tags (get-char-at-position editor cursor-position))
       (->>
         (delete-char-at-position editor cursor-position)
-        (insert-char-at-position editor end-of-next-word))
+        (replace-char-at-position editor end-of-next-word))
       (recur editor (move-position-forward editor cursor-position)))))
+
+(defn forward-barf [editor cursor-position]
+
+  (when (at-beginning? editor cursor-position)
+    (throw (js/Error "No paren found to slurp forward")))
+
+  (println "Cursor " cursor-position)
+
+  (let [prev-word (previous-word editor cursor-position)]
+    (if (closing-tags (get-char-at-position editor cursor-position))
+      (do
+        (println "Prev-word is: "(get-char-at-position editor prev-word))
+        (when (= " " (get-char-at-position editor prev-word))
+          (println "Nice")
+          (insert-char-at-position editor prev-word " "))
+        (->> cursor-position
+             (delete-char-at-position editor)
+             (replace-char-at-position editor prev-word)))
+      (recur editor (move-position-forward editor cursor-position)))
+    )
+  )
 
 (defn mock-next-word [text]
   (fn [_ p]
@@ -132,6 +160,21 @@
     (if (>= index 0)
       (+ 1 p index)
       (inc (count text)))))
+
+(defn mock-previous-word [text]
+  (fn foo [_ p]
+    (let [s (str/reverse (subs text 0 p))
+          prev-space-position (inc (.indexOf s (re-find #"\s" s)))
+          s-pre (subs s prev-space-position)
+          index (.indexOf s-pre (first (re-find #"\w(\s|$)" s-pre)))]
+      (- p prev-space-position index 1)
+      #_(- p index))))
+
+(re-find #"\w$" "foo bar")
+(let [t "foo bar baz"]
+  (->>
+   ((mock-previous-word t) nil 9)
+   (subs t)))
 
 
 (defn mock-end-of-word [text]
@@ -151,17 +194,23 @@
 
 (defn mock-insert-char-at-position [text]
   (fn [_ p c]
+    (str (subs @text 0 p) c (subs @text p))))
+
+(defn mock-replace-char-at-position [text]
+  (fn [_ p c]
     (str (subs @text 0 p) c (subs @text (inc p)))))
 
-(let [text (atom "(bitches (get) stiches)")]
+(let [text (atom "(bitches (get some) stiches)")]
   (with-redefs [delete-char-at-position (mock-delete-char-at-position text)
                 insert-char-at-position (mock-insert-char-at-position text)
+                replace-char-at-position (mock-replace-char-at-position text)
                 move-position-forward  (fn [_ p] (inc p))
+                previous-word (mock-previous-word @text)
                 end-of-word (mock-end-of-word @text)
                 next-word (mock-next-word @text)
-                get-char-at-position (fn [_ p] (nth @text p))
+                get-char-at-position (fn get-char [_ p] (nth @text p))
                 at-end? (fn [_ p] (> p (count @text)))]
-    (forward-slurp nil 11)))
+    (forward-barf nil 11)))
 
 (subs "(bitches (get) stiches)" 11)
 

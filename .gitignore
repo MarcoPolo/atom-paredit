@@ -8,3 +8,4 @@ lib/paredit.js.map
 .lein-repl-history
 .nrepl-port
 target/
+.repl

@@ -1,0 +1,10 @@
+.DS_Store
+npm-debug.log
+node_modules
+out
+lib/out
+lib/paredit.js.map
+*~
+.lein-repl-history
+.nrepl-port
+target/

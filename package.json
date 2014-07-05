@@ -1,0 +1,14 @@
+{
+  "name": "paredit",
+  "main": "./lib/paredit",
+  "version": "0.0.0",
+  "description": "A short description of your package",
+  "activationEvents": ["paredit:toggle", "paredit:fix-indent"],
+  "repository": "https://github.com/atom/paredit",
+  "license": "MIT",
+  "engines": {
+    "atom": ">0.50.0"
+  },
+  "dependencies": {
+  }
+}

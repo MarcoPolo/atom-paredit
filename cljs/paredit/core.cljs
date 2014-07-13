@@ -111,9 +111,20 @@
   "Returns a new position at the end of the current word"
   [editor cursor-position])
 
+(defn same-position?
+  "Retruns true/false if two positions are equal"
+  [editor position-1 position-2]
+  (println "not implemented"))
+
 (defn delete-char-at-position
   "returns the deleted character"
   [editor cursor-position])
+
+(defn delete-range [editor start-position end-position]
+  (when-not (same-position? editor start-position end-position)
+    ;; Delete backwards since deleting will change the end position
+    (delete-char-at-position editor end-position)
+    (recur editor start-position (move-position-backward editor end-position))))
 
 (defn replace-char-at-position [editor cursor-position character])
 
@@ -220,7 +231,7 @@
                 cursor))))))))
 
 (defn next-closing-paren [editor cursor-position]
-  (loop [cursor-position cursor-position
+  (loop [cursor-position (move-position-forward editor cursor-position)
          tag-stack '()]
     (let [top-tag (peek tag-stack)
           c (get-char-at-position editor cursor-position)
@@ -326,6 +337,21 @@
          (delete-char-at-position editor)
          (insert-char-at-position editor next-word))))
 
+(defn raise-sexp [editor cursor-position]
+  (let [c (get-char-at-position editor cursor-position)
+        child-start (if (opening-tags c)
+                      cursor-position
+                      (prev-opening-paren editor cursor-position))
+        child-end (next-closing-paren editor child-start)
+        parent-start (->> child-start
+                          (move-position-backward editor)
+                          (prev-opening-paren editor))
+        parent-end (next-closing-paren editor parent-start)]
+    (println "foo")
+
+    (delete-range editor child-end parent-end)
+    (delete-range editor parent-start child-start)))
+
 (defn mock-next-word [text]
   (fn [_ p]
     (let [s (subs text p)
@@ -405,6 +431,10 @@
               (str (subs t 0 p) (subs t (inc p))))
       (nth t p))))
 
+(defn mock-same-position? []
+  (fn [_ p1 p2]
+    (= p1 p2)))
+
 (defn mock-insert-char-at-position [text]
   (fn [_ p c]
     (reset! text
@@ -441,17 +471,23 @@
                 get-char-at-position (fn get-char [_ p] (nth @text p))
                 move-position-backward (fn [_ p] (dec p))
                 at-beginning? (fn [_ p] (< p 0))
-                at-end? (fn [_ p] (> p (count @text)))]
+                at-end? (fn [_ p] (> p (count @text)))
+                same-position? (mock-same-position?)]
     ;(next-closing-paren nil 14)
     ;(prev-opening-paren nil 14)
     ;(backward-barf nil 14)
-    (backward-slurp nil 14)
+    ;(backward-slurp nil 14)
+    #_(->>
+     (next-closing-paren nil 9)
+     (subs @text))
+
+    (raise-sexp editor 9)
     @text
     ))
 
 (bitches (get (some) fd) stiches)
-(subs "(bitches (get (some) fd) stiches)" 0 14 )
-(nth "(bitches (get (some) fd) stiches)" 14 )
+(subs "(bitches (get (some) fd) stiches)" 0 9 )
+(nth "(bitches (get (some) fd) stiches)" 9)
 
 (let [text "lolz dance lolz"]
   (->> 

@@ -27,11 +27,19 @@
    ")" "("
    "}" "{"})
 
+(def closing-tag-pair
+  {"(" ")"
+   "{" "}"
+   "[" "]"})
+
 (def closing-tags
   #{"}" ")" "]"})
 
 (def opening-tags
   #{"{" "(" "["})
+
+(def whitespace
+  #{" " "\n" "\t"})
 
 (def tags (apply hash-set (keys matching-tags)))
 
@@ -114,6 +122,146 @@
 (defn previous-word
   "Takes you to the start of the previous word"
   [editor cursor-position])
+
+(defn previous-space [editor p]
+  (loop [cursor p]
+    (if (at-beginning? editor cursor)
+      cursor
+      (if (whitespace (get-char-at-position editor cursor))
+        cursor
+        (recur (move-position-backward editor cursor))))))
+
+(defn forward-space [editor p]
+  (loop [cursor p]
+    (if (at-end? editor cursor)
+      cursor
+      (if (whitespace (get-char-at-position editor cursor))
+        cursor
+        (recur (move-position-forward editor cursor))))))
+
+(defn next-nonspace [editor p]
+  (loop [cursor p]
+    (if (at-end? editor cursor)
+      cursor
+      (if (whitespace (get-char-at-position editor cursor))
+        (recur (move-position-forward editor cursor))
+        cursor))))
+
+(defn prev-nonspace [editor p]
+  (loop [cursor p]
+    (if (at-beginning? editor cursor)
+      cursor
+      (if (whitespace (get-char-at-position editor cursor))
+        (recur (move-position-backward editor cursor))
+        cursor))))
+
+(defn previous-form [editor p]
+  (loop [cursor (previous-space editor p)
+         passed-nonspace? false
+         tag-stack '()]
+    (let [c (get-char-at-position nil cursor)
+          top-tag (peek tag-stack)]
+      (println "cursor: " cursor)
+      (println "c: " (get-char-at-position editor cursor))
+      (println "tt: " top-tag)
+      (println "pn: " passed-nonspace?)
+      (if (at-beginning? editor cursor)
+        cursor
+        (if (or (whitespace c) (opening-tags c))
+          (if passed-nonspace?
+            (move-position-forward editor cursor)
+            (recur
+             (move-position-backward editor cursor)
+             passed-nonspace?
+             tag-stack))
+
+          (if (tags c)
+            (if (and top-tag (= (closing-tag-pair c) top-tag))
+              (recur
+               (move-position-backward editor cursor)
+               true
+               (pop tag-stack))
+              (recur
+               (move-position-backward editor cursor)
+               true
+               (conj tag-stack c)))
+            (recur
+             (move-position-backward editor cursor)
+             true
+             tag-stack)))))))
+
+(defn next-form [editor cursor-position]
+  (let [c (get-char-at-position editor cursor-position) ] 
+    (loop [cursor (->> (forward-space editor cursor-position)
+                       (next-nonspace editor))
+           tag-stack (if (opening-tags c)
+                       '(c)
+                       '())]
+      (let [c (get-char-at-position editor cursor)
+            top-tag (peek tag-stack)]
+
+        (println "cursor: " cursor)
+        (println "c: " (get-char-at-position editor cursor))
+        (println "tt: " top-tag)
+        (println "pn: " passed-nonspace?)
+        
+        (if (at-end? editor cursor)
+          cursor
+          (if (whitespace c)
+            (recur (move-position-forward editor cursor)
+                   tag-stack)
+            (if (= c (matching-tags top-tag))
+              (recur (move-position-forward editor cursor)
+                     (pop tag-stack))
+              (if top-tag
+                (recur (move-position-forward editor cursor)
+                       tag-stack)
+                ;; tag stack is clear and this isn't whitespace
+                cursor))))))))
+
+(defn next-closing-paren [editor cursor-position]
+  (loop [cursor-position cursor-position
+         tag-stack '()]
+    (let [top-tag (peek tag-stack)
+          c (get-char-at-position editor cursor-position)
+          forward-cursor (move-position-forward editor cursor-position)]
+      (if (at-end? editor cursor-position)
+        cursor-position
+        (if (opening-tags c)
+          (recur forward-cursor
+                 (conj tag-stack c))
+          (if (closing-tags c)
+            (if-not top-tag
+              cursor-position
+              (if (= c (matching-tags top-tag))
+                (recur forward-cursor
+                       (pop tag-stack))
+                (do
+                  (println "error")
+                  cursor-position)))
+            (recur forward-cursor tag-stack)))))))
+
+(defn prev-opening-paren [editor cursor-position]
+  (loop [cursor-position (move-position-backward editor cursor-position)
+         tag-stack '()]
+    (let [top-tag (peek tag-stack)
+          c (get-char-at-position editor cursor-position)
+          backward-cursor (move-position-backward editor cursor-position)]
+      (if (at-beginning? editor cursor-position)
+        cursor-position
+        (if (closing-tags c)
+          (recur backward-cursor
+                 (conj tag-stack c))
+          (if (opening-tags c)
+            (if-not top-tag
+              cursor-position
+              (if (= c (matching-tags top-tag))
+                (recur backward-cursor
+                       (pop tag-stack))
+                (do
+                  (println "error")
+                  cursor-position)))
+            (recur backward-cursor tag-stack)))))))
   
 (defn forward-slurp [editor cursor-position]
   ;; to forward slurp we find the first closing tag
@@ -132,26 +280,51 @@
         (replace-char-at-position editor end-of-next-word))
       (recur editor (move-position-forward editor cursor-position)))))
 
+(defn backward-slurp [editor cursor-position]
+  (when (at-beginning? editor cursor-position)
+    (throw (js/Error "No paren found to slurp backward")))
+
+  (let [prev-paren (prev-closing-paren editor cursor-position)
+        spot-to-place (->>
+                       (move-position-backward editor prev-paren)
+                       (previous-form editor))]
+    (->>
+     (delete-char-at-position editor prev-paren)
+     (insert-char-at-position editor spot-to-place))))
+    
+
 (defn forward-barf [editor cursor-position]
 
-  (when (at-beginning? editor cursor-position)
-    (throw (js/Error "No paren found to slurp forward")))
+  (when (at-end? editor cursor-position)
+    (throw (js/Error "No paren found")))
 
   (println "Cursor " cursor-position)
 
-  (let [prev-word (previous-word editor cursor-position)]
-    (if (closing-tags (get-char-at-position editor cursor-position))
-      (do
-        (println "Prev-word is: "(get-char-at-position editor prev-word))
-        (when (= " " (get-char-at-position editor prev-word))
-          (println "Nice")
-          (insert-char-at-position editor prev-word " "))
-        (->> cursor-position
-             (delete-char-at-position editor)
-             (replace-char-at-position editor prev-word)))
-      (recur editor (move-position-forward editor cursor-position)))
-    )
-  )
+  (let [cursor-position (next-closing-paren editor cursor-position)
+        prev-cursor (move-position-backward editor cursor-position)
+        prev-word (->> (previous-form editor prev-cursor)
+                       (forward-space editor))]
+    (println "Prev-cursor is: "(get-char-at-position editor prev-cursor))
+    (println "Prev-word is: "(get-char-at-position editor prev-word))
+    (->> cursor-position
+         (delete-char-at-position editor)
+         (insert-char-at-position editor prev-word))))
+
+(defn backward-barf [editor cursor-position]
+
+  (when (at-beginning? editor cursor-position)
+    (throw (js/Error "No paren found")))
+
+  (println "Cursor " cursor-position)
+
+  (let [cursor-position (prev-opening-paren editor cursor-position)
+        next-cursor (move-position-forward editor cursor-position)
+        next-word (next-form editor next-cursor)]
+    (println "next-cursor is: "(get-char-at-position editor next-cursor))
+    (println "next-word is: "(get-char-at-position editor next-word))
+    (->> cursor-position
+         (delete-char-at-position editor)
+         (insert-char-at-position editor next-word))))
 
 (defn mock-next-word [text]
   (fn [_ p]
@@ -169,13 +342,53 @@
           index (.indexOf s-pre (first (re-find #"\w(\s|$)" s-pre)))]
       (- p prev-space-position index 1)
       #_(- p index))))
-
 (re-find #"\w$" "foo bar")
-(let [t "foo bar baz"]
-  (->>
-   ((mock-previous-word t) nil 9)
-   (subs t)))
+(apply conj #{"foo" "bar"} #{"a" "b"})
 
+
+(let [text (atom "(bitches (get some) stiches)")]
+  (with-redefs [delete-char-at-position (mock-delete-char-at-position text)
+                insert-char-at-position (mock-insert-char-at-position text)
+                replace-char-at-position (mock-replace-char-at-position text)
+                move-position-forward  (fn [_ p] (inc p))
+                move-position-forward  (fn [_ p] (inc p))
+                previous-word (mock-previous-word @text)
+                end-of-word (mock-end-of-word @text)
+                next-word (mock-next-word @text)
+                get-char-at-position (fn get-char [_ p] (nth @text p))
+                move-position-backward (fn [_ p] (dec p))
+                at-beginning? (fn [_ p] (< p 0))
+                at-end? (fn [_ p] (> p (count @text)))]
+    (println (subs @text 11))
+    (->>
+     (previous-form nil 17)
+     (forward-space nil)
+     (move-position-forward nil)
+     (subs @text))
+   ))
+
+(let [text (atom "(bitches (get some) stiches)")]
+  (with-redefs [delete-char-at-position (mock-delete-char-at-position text)
+                insert-char-at-position (mock-insert-char-at-position text)
+                replace-char-at-position (mock-replace-char-at-position text)
+                move-position-forward  (fn [_ p] (inc p))
+                move-position-forward  (fn [_ p] (inc p))
+                previous-word (mock-previous-word @text)
+                end-of-word (mock-end-of-word @text)
+                next-word (mock-next-word @text)
+                get-char-at-position (fn get-char [_ p] (nth @text p))
+                move-position-backward (fn [_ p] (dec p))
+                at-beginning? (fn [_ p] (< p 0))
+                at-end? (fn [_ p] (> p (count @text)))]
+    (println (subs @text 17))
+    (->>
+     (next-form nil 17)
+     (subs @text))
+   ))
+
+
+(subs  "(bitches (get some) stiches)" 17)
+(nth "(bitches (get some) stiches)" 18)
 
 (defn mock-end-of-word [text]
   (fn [_ p]
@@ -194,13 +407,14 @@
 
 (defn mock-insert-char-at-position [text]
   (fn [_ p c]
-    (str (subs @text 0 p) c (subs @text p))))
+    (reset! text
+            (str (subs @text 0 p) c (subs @text p)))))
 
 (defn mock-replace-char-at-position [text]
   (fn [_ p c]
     (str (subs @text 0 p) c (subs @text (inc p)))))
 
-(let [text (atom "(bitches (get some) stiches)")]
+(let [text (atom "(bitches (get (some) fd) stiches)")]
   (with-redefs [delete-char-at-position (mock-delete-char-at-position text)
                 insert-char-at-position (mock-insert-char-at-position text)
                 replace-char-at-position (mock-replace-char-at-position text)
@@ -209,10 +423,35 @@
                 end-of-word (mock-end-of-word @text)
                 next-word (mock-next-word @text)
                 get-char-at-position (fn get-char [_ p] (nth @text p))
+                move-position-backward (fn [_ p] (dec p))
+                at-beginning? (fn [_ p] (< p 0))
                 at-end? (fn [_ p] (> p (count @text)))]
-    (forward-barf nil 11)))
+    ;(next-closing-paren nil 14)
+    (forward-barf nil 14)
+    ))
 
-(subs "(bitches (get) stiches)" 11)
+(let [text (atom "(bitches (get (some) fd) stiches)")]
+  (with-redefs [delete-char-at-position (mock-delete-char-at-position text)
+                insert-char-at-position (mock-insert-char-at-position text)
+                replace-char-at-position (mock-replace-char-at-position text)
+                move-position-forward  (fn [_ p] (inc p))
+                previous-word (mock-previous-word @text)
+                end-of-word (mock-end-of-word @text)
+                next-word (mock-next-word @text)
+                get-char-at-position (fn get-char [_ p] (nth @text p))
+                move-position-backward (fn [_ p] (dec p))
+                at-beginning? (fn [_ p] (< p 0))
+                at-end? (fn [_ p] (> p (count @text)))]
+    ;(next-closing-paren nil 14)
+    ;(prev-opening-paren nil 14)
+    ;(backward-barf nil 14)
+    (backward-slurp nil 14)
+    @text
+    ))
+
+(bitches (get (some) fd) stiches)
+(subs "(bitches (get (some) fd) stiches)" 0 14 )
+(nth "(bitches (get (some) fd) stiches)" 14 )
 
 (let [text "lolz dance lolz"]
   (->> 
@@ -228,6 +467,10 @@
   
 )
   )
+
+
+
+(re-find #"(\s\w|\([\w\W]\))" "foo bar" )
 
 
 (let [text "(this is a simple test)"

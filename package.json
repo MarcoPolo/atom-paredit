@@ -7,7 +7,9 @@
     "paredit:forward-slurp",
     "paredit:forward-barf",
     "paredit:backward-slurp",
-    "paredit:backward-barf"],
+    "paredit:backward-barf",
+    "paredit:raise-sexp",
+    "paredit:next-form"],
   "repository": "https://github.com/atom/paredit",
   "license": "MIT",
   "engines": {

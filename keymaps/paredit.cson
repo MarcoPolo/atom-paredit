@@ -12,3 +12,4 @@
   'ctrl-left': 'paredit:forward-barf'
   'ctrl-alt-right': 'paredit:backward-barf'
   'ctrl-alt-left': 'paredit:backward-slurp'
+  'alt-r': 'paredit:raise-sexp'

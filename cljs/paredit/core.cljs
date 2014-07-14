@@ -31,6 +31,13 @@
 
 ;; Stuff to implement
 
+(defn get-end-of-line
+  "Should return the position of the end of the line"
+  [editor position]
+  (let [point (atom/offset->point editor position)]
+    (set! (.-column point) js/Infinity)
+    (atom/point->offset editor point)))
+
 (defn move-position-forward [editor position]
   (inc position))
 
@@ -172,85 +179,6 @@
         cursor
         (recur (move-position-forward editor cursor))))))
 
-(defn next-nonspace [editor p]
-  (loop [cursor p]
-    (if (at-end? editor cursor)
-      cursor
-      (if (whitespace (get-char-at-position editor cursor))
-        (recur (move-position-forward editor cursor))
-        cursor))))
-
-(defn prev-nonspace [editor p]
-  (loop [cursor p]
-    (if (at-beginning? editor cursor)
-      cursor
-      (if (whitespace (get-char-at-position editor cursor))
-        (recur (move-position-backward editor cursor))
-        cursor))))
-
-(defn previous-form [editor p]
-  (loop [cursor (previous-space editor p)
-         passed-nonspace? false
-         tag-stack '()]
-    (let [c (get-char-at-position editor cursor)
-          top-tag (peek tag-stack)]
-      (println "cursor: " cursor)
-      (println "c: " (get-char-at-position editor cursor))
-      (println "tt: " top-tag)
-      (println "pn: " passed-nonspace?)
-      (if (at-beginning? editor cursor)
-        cursor
-        (if (or (whitespace c) (opening-tags c))
-          (if passed-nonspace?
-            (move-position-forward editor cursor)
-            (recur
-             (move-position-backward editor cursor)
-             passed-nonspace?
-             tag-stack))
-
-          (if (tags c)
-            (if (and top-tag (= (closing-tag-pair c) top-tag))
-              (recur
-               (move-position-backward editor cursor)
-               true
-               (pop tag-stack))
-              (recur
-               (move-position-backward editor cursor)
-               true
-               (conj tag-stack c)))
-            (recur
-             (move-position-backward editor cursor)
-             true
-             tag-stack)))))))
-
-(defn next-form [editor cursor-position]
-  (let [c (get-char-at-position editor cursor-position) ]
-    (loop [cursor (->> (forward-space editor cursor-position)
-                       (next-nonspace editor))
-           tag-stack (if (opening-tags c)
-                       '(c)
-                       '())]
-      (let [c (get-char-at-position editor cursor)
-            top-tag (peek tag-stack)]
-
-        (println "cursor: " cursor)
-        (println "c: " (get-char-at-position editor cursor))
-        (println "tt: " top-tag)
-
-        (if (at-end? editor cursor)
-          cursor
-          (if (whitespace c)
-            (recur (move-position-forward editor cursor)
-                   tag-stack)
-            (if (= c (matching-tags top-tag))
-              (recur (move-position-forward editor cursor)
-                     (pop tag-stack))
-              (if top-tag
-                (recur (move-position-forward editor cursor)
-                       tag-stack)
-                ;; tag stack is clear and this isn't whitespace
-                cursor))))))))
-
 (defn next-closing-paren [editor cursor-position]
   (loop [cursor-position (move-position-forward editor cursor-position)
          tag-stack '()]
@@ -295,20 +223,72 @@
                   cursor-position)))
             (recur backward-cursor tag-stack)))))))
 
+
+(defn next-nonspace [editor p]
+  (loop [cursor p]
+    (if (at-end? editor cursor)
+      cursor
+      (if (whitespace (get-char-at-position editor cursor))
+        (recur (move-position-forward editor cursor))
+        cursor))))
+
+(defn prev-nonspace [editor p]
+  (loop [cursor p]
+    (if (at-beginning? editor cursor)
+      cursor
+      (if (whitespace (get-char-at-position editor cursor))
+        (recur (move-position-backward editor cursor))
+        cursor))))
+
+(defn prev-pred [editor pred p]
+  (loop [cursor p]
+    (if (at-beginning? editor cursor)
+      cursor
+      (if (pred (get-char-at-position editor cursor))
+        (recur (move-position-backward editor cursor))
+        cursor))))
+
+(defn previous-form [editor cursor]
+  (let [c (get-char-at-position editor cursor)]
+    (if (closing-tags c)
+      (->> (prev-opening-paren editor cursor)
+           (move-position-backward editor)
+           (prev-nonspace editor)
+           (prev-pred editor (complement (apply conj whitespace opening-tags)))
+           (move-position-forward editor))
+      (if (whitespace c)
+        (if (closing-tags (get-char-at-position editor (prev-nonspace editor cursor)))
+          (->> (prev-nonspace editor cursor)
+               (prev-opening-paren editor))
+          (->> (prev-nonspace editor cursor)
+               (prev-pred editor (complement (apply conj whitespace opening-tags)))
+               (move-position-forward editor)))
+        (recur editor (previous-space editor cursor))))))
+
+(defn next-form [editor cursor]
+  (let [c (get-char-at-position editor cursor)]
+    (if (opening-tags c)
+      (->> (next-closing-paren editor cursor)
+           (move-position-forward editor)
+           (next-nonspace editor))
+      (if (whitespace c)
+        (next-nonspace editor cursor)
+        (->> (forward-space editor cursor)
+             (next-nonspace editor))))))
+
 (defn forward-slurp [editor cursor-position]
-  ;; to forward slurp we find the first closing tag
-  ;; and insert it after the first token
 
   (when (at-end? editor cursor-position)
     (throw (js/Error "No paren found to slurp forward")))
 
-  (println cursor-position)
-  (let [end-of-next-word (->> cursor-position
-                              (prev-opening-paren editor)
-                              (next-closing-paren editor)
-                              (next-form editor)
-                              (forward-space editor)
-                              (move-position-backward editor))]
+  (let [next-form (->> cursor-position
+                       (prev-opening-paren editor)
+                       (next-closing-paren editor)
+                       (next-form editor))
+        end-of-next-word (if (opening-tags (get-char-at-position editor next-form))
+                           (next-closing-paren editor next-form)
+                           (->> (forward-space editor next-form)
+                                (move-position-backward editor)))]
     (->> cursor-position
          (prev-opening-paren editor)
          (next-closing-paren editor)
@@ -333,17 +313,15 @@
   (when (at-end? editor cursor-position)
     (throw (js/Error "No paren found")))
 
-  (println "Cursor " cursor-position)
-
   (let [cursor-position (next-closing-paren editor cursor-position)
-        prev-cursor (move-position-backward editor cursor-position)
-        prev-word (->> (previous-form editor prev-cursor)
-                       (forward-space editor))]
-    (println "Prev-cursor is: "(get-char-at-position editor prev-cursor))
-    (println "Prev-word is: "(get-char-at-position editor prev-word))
+        prev-word (->> (move-position-backward editor cursor-position)
+                       (previous-form editor))
+        end-of-word (if (opening-tags (get-char-at-position editor prev-word))
+                      (next-closing-paren editor prev-word)
+                      (forward-space editor prev-word))]
     (->> cursor-position
          (delete-char-at-position editor)
-         (insert-char-at-position editor prev-word))))
+         (insert-char-at-position editor end-of-word))))
 
 (defn backward-barf [editor cursor-position]
 
@@ -370,10 +348,31 @@
                           (move-position-backward editor)
                           (prev-opening-paren editor))
         parent-end (next-closing-paren editor parent-start)]
-    (println "foo")
 
     (delete-range editor child-end parent-end)
-    (delete-range editor parent-start child-start)))
+    (delete-range editor
+                  (move-position-backward editor parent-start)
+                  (previous-space editor child-start))))
+
+(defn at-end-of-line? [editor cursor-position]
+  (= cursor-position (get-end-of-line editor cursor-position)))
+
+(defn kill-line-after-cursor [editor cursor-position]
+  (when-not (at-end-of-line? editor cursor-position)
+    (let [c (get-char-at-position editor cursor-position)]
+      (if (opening-tags c)
+        (do
+          (delete-range editor
+                        (move-position-backward editor cursor-position)
+                        (next-closing-paren editor cursor-position))
+
+          (recur editor cursor-position))
+        (if (closing-tags c)
+          (do
+            (recur editor (move-position-forward editor cursor-position)))
+          (do
+            (delete-char-at-position editor cursor-position)
+            (recur editor cursor-position)))))))
 
 (defn fix-indent []
   (let [editor (.-activePaneItem js/atom.workspace)
@@ -382,18 +381,38 @@
     (println "Yo indent's broke yo")
     (println (get-char-at-position editor position))))
 
+(defn generic-cmd-no-trans [f]
+  (fn []
+    (let [editor (.-activePaneItem js/atom.workspace)
+          position (->> (.getCursorBufferPosition editor) (atom/point->offset editor))]
+      (f editor position))))
+
 (defn generic-cmd [f]
   (fn []
     (let [editor (.-activePaneItem js/atom.workspace)
-          cursor (-> (.-cursors editor) first)
-          position (->> (.getScreenPosition cursor) (atom/point->offset editor))]
+          position (->> (.getCursorBufferPosition editor) (atom/point->offset editor))]
       (atom/transact editor #(f editor position)))))
+
+(defn generic-cmd-movement [f]
+  (fn []
+    (let [editor (.-activePaneItem js/atom.workspace)
+          position (->> (.getCursorBufferPosition editor) (atom/point->offset editor))]
+          (.setCursorBufferPosition
+           editor
+           (atom/offset->point
+            editor
+            (f editor position))))))
 
 (def commands->fix-indent
   {"paredit:forward-barf" (generic-cmd forward-barf)
    "paredit:forward-slurp" (generic-cmd forward-slurp)
    "paredit:backward-barf" (generic-cmd backward-barf)
-   "paredit:backward-slurp" (generic-cmd backward-slurp)})
+   "paredit:backward-slurp" (generic-cmd backward-slurp)
+   "paredit:raise-sexp" (generic-cmd raise-sexp)
+   "paredit:kill-line" (generic-cmd kill-line-after-cursor)
+   "paredit:next-form" (generic-cmd-movement next-form)
+   "paredit:prev-form" (generic-cmd-movement previous-form)
+   "paredit:next-closing-paren" (generic-cmd-movement next-closing-paren)})
 
 (defn deactivate [& args]
   (.log js/console "bye world from clojurescript!!"))

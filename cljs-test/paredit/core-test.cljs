@@ -14,6 +14,8 @@
 
   (foo (bar (bam baz) lol wtf) rofl)
 
+  (foo (lolz (baz bar))
+
 )
 
 (defn mock-previous-word [text]
@@ -180,4 +182,4 @@
 (set! js/module.exports js/paredit.core)
 
 (set! *main-cli-fn* (fn [& args] (.log js/console "hello from maincli " (pr-str args))))
-(set! *print-fn* (fn [& args] (.log js/console (apply str args))))
+(set! *print-fn* (fn [& args] (.log js/console (apply str args)))))

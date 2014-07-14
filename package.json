@@ -3,12 +3,17 @@
   "main": "./lib/paredit",
   "version": "0.0.0",
   "description": "A short description of your package",
-  "activationEvents": ["paredit:toggle", "paredit:fix-indent"],
+  "activationEvents": ["paredit:toggle", "paredit:fix-indent",
+    "paredit:forward-slurp",
+    "paredit:forward-barf",
+    "paredit:backward-slurp",
+    "paredit:backward-barf"],
   "repository": "https://github.com/atom/paredit",
   "license": "MIT",
   "engines": {
     "atom": ">0.50.0"
   },
   "dependencies": {
+    "text-buffer": "^2.4.2"
   }
 }

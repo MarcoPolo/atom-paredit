@@ -12,6 +12,7 @@
 
   :cljsbuild {
     :builds [{:id "paredit"
+              :notify-command ["terminal-notifier" "-message"]
               :source-paths ["cljs"]
               :compiler {
                 :output-to "lib/paredit.js"

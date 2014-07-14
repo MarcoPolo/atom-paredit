@@ -9,7 +9,7 @@
     'submenu': [
       'label': 'paredit'
       'submenu': [
-        { 'label': 'Toggle', 'command': 'paredit:toggle' }
+        { 'label': 'Forward Slurp', 'command': 'paredit:forward-slurp' }
       ]
     ]
   }

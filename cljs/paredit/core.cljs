@@ -38,14 +38,14 @@
   (dec position))
 
 (defn get-text-btwn [editor position1 position2]
-  (let [buffer (atom/ed->buffer editor)] 
+  (let [buffer (atom/ed->buffer editor)]
     (.getTextInRange buffer
                      (atom/->range
                       (atom/offset->point editor position1)
                       (atom/offset->point editor position2)))))
 
 (defn get-char-at-position [editor position]
-  (let [buffer (atom/ed->buffer editor)] 
+  (let [buffer (atom/ed->buffer editor)]
     (get-text-btwn editor
                    position
                    (move-position-forward editor position))))
@@ -56,7 +56,7 @@
 
 (defn at-end?
   [editor front-cursor-position]
-  (let [buffer (atom/ed->buffer editor)] 
+  (let [buffer (atom/ed->buffer editor)]
     (>= front-cursor-position
         (atom/point->offset editor (.getEndPosition buffer)))))
 
@@ -84,7 +84,7 @@
   (let [buffer (atom/ed->buffer editor)]
     (.setTextInRange
      buffer
-     (atom/->range 
+     (atom/->range
       (atom/offset->point editor cursor-position)
       (atom/offset->point editor (move-position-forward editor cursor-position)))
      character)))
@@ -390,8 +390,7 @@
       (atom/transact editor #(f editor position)))))
 
 (def commands->fix-indent
-  {"paredit:fix-indent" fix-indent
-   "paredit:forward-barf" (generic-cmd forward-barf)
+  {"paredit:forward-barf" (generic-cmd forward-barf)
    "paredit:forward-slurp" (generic-cmd forward-slurp)
    "paredit:backward-barf" (generic-cmd backward-barf)
    "paredit:backward-slurp" (generic-cmd backward-slurp)})

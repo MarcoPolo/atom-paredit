@@ -3,7 +3,7 @@
   "main": "./lib/paredit",
   "version": "0.0.0",
   "description": "A short description of your package",
-  "activationEvents": ["paredit:toggle", "paredit:fix-indent",
+  "activationEvents": [
     "paredit:forward-slurp",
     "paredit:forward-barf",
     "paredit:backward-slurp",

@@ -1,4 +1,5 @@
-(ns paredit.core-test)
+(ns paredit.core-test
+  "Test the core functionality of paredity with a mock editor")
 
 (defn mock-next-word [text]
   (fn [_ p]
@@ -9,9 +10,9 @@
       (inc (count text)))))
 
 (comment
+  "This is here so we can test the actual paredit inside the editor"
 
-(some (bitches (get fd stiches) lolz) foo)
-lol
+  (foo (bar (bam baz) lol wtf) rofl)
 
 )
 

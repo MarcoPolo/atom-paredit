@@ -1,7 +1,7 @@
 {
   "name": "paredit",
   "main": "./lib/paredit",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Paredit on atom",
   "activationEvents": [
     "paredit:forward-slurp",
@@ -10,7 +10,8 @@
     "paredit:backward-barf",
     "paredit:raise-sexp",
     "paredit:next-form",
-    "paredit:kill-line"],
+    "paredit:kill-line"
+  ],
   "repository": "https://github.com/marcopolo/atom-paredit",
   "license": "MIT",
   "engines": {

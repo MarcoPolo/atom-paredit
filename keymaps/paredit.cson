@@ -13,3 +13,7 @@
   'ctrl-alt-right': 'paredit:backward-barf'
   'ctrl-alt-left': 'paredit:backward-slurp'
   'alt-r': 'paredit:raise-sexp'
+  'ctrl-k': 'paredit:kill-line'
+
+ '.editor':
+   'ctrl-k': 'paredit:kill-line'

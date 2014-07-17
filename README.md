@@ -1,3 +1,4 @@
+[![Stories in Ready](https://badge.waffle.io/MarcoPolo/atom-paredit.png?label=ready&title=Ready)](https://waffle.io/MarcoPolo/atom-paredit)
 # Atom Paredit
 
 Brings Paredit to atom!

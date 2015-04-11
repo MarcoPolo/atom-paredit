@@ -7,7 +7,7 @@
 
 # For more detailed documentation see
 # https://atom.io/docs/latest/advanced/keymaps
-'.workspace':
+'atom-workspace':
   'ctrl-right': 'paredit:forward-slurp'
   'ctrl-left': 'paredit:forward-barf'
   'ctrl-alt-right': 'paredit:backward-barf'
@@ -15,5 +15,5 @@
   'alt-r': 'paredit:raise-sexp'
   'ctrl-k': 'paredit:kill-line'
 
- '.editor':
+ 'atom-text-editor':
    'ctrl-k': 'paredit:kill-line'

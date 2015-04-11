@@ -10,6 +10,8 @@
 
   :plugins [[lein-cljsbuild "1.0.5"]]
 
+  :clean-targets ["lib/out" "lib/paredit.js" "lib/paredit.js.map"]
+
   :cljsbuild {
     :builds [{:id "paredit"
               :notify-command ["./notify"]

@@ -12,7 +12,7 @@
 
   :cljsbuild {
     :builds [{:id "paredit"
-              :notify-command ["terminal-notifier" "-message"]
+              :notify-command ["./notify"]
               :source-paths ["cljs"]
               :compiler {
                 :output-to "lib/paredit.js"
@@ -21,7 +21,7 @@
                 :target :nodejs
                 :optimizations :simple}}
              {:id "dev"
-              :notify-command ["terminal-notifier" "-message"]
+              :notify-command ["./notify"]
               :source-paths ["cljs"]
               :compiler
               {:output-dir "target/devout"

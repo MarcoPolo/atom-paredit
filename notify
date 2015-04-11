@@ -1,0 +1,5 @@
+#!/bin/bash
+
+if type terminal-notifier &> /dev/null; then
+  terminal-notifier -message $1;
+fi

@@ -1,7 +1,7 @@
 (ns paredit.atom
   "Wrapper around atom primitives")
 
-(def text-buffer (js/require "text-buffer"))
+(def text-buffer (.-TextBuffer (js/require "atom")))
 
 (defn ->point [[r c]]
   (text-buffer.Point. r c))

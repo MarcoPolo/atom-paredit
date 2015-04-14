@@ -6,6 +6,7 @@ lib/out
 lib/paredit.js.map
 *~
 .lein-repl-history
+.lein-failures
 .nrepl-port
 target/
 .repl

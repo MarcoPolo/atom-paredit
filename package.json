@@ -15,9 +15,8 @@
   "repository": "https://github.com/marcopolo/atom-paredit",
   "license": "MIT",
   "engines": {
-    "atom": ">0.50.0"
+    "atom": ">=0.190.0 <2.0.0"
   },
   "dependencies": {
-    "text-buffer": "^2.4.2"
   }
 }

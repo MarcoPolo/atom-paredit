@@ -1,7 +1,7 @@
 (ns paredit.atom
   "Wrapper around atom primitives")
 
-(def text-buffer (js/require "text-buffer"))
+(def text-buffer (.-TextBuffer (js/require "atom")))
 
 (defn ->point [[r c]]
   (text-buffer.Point. r c))
@@ -13,13 +13,13 @@
   (.-buffer editor))
 
 (defn offset->point [editor offset]
-  (let [buffer (ed->buffer editor)] 
+  (let [buffer (ed->buffer editor)]
     (.positionForCharacterIndex buffer offset)))
 
 (defn point->offset [editor point]
-  (let [buffer (ed->buffer editor)] 
+  (let [buffer (ed->buffer editor)]
     (.characterIndexForPosition buffer point)))
 
 (defn transact [editor f]
-  (let [buffer (ed->buffer editor)] 
+  (let [buffer (ed->buffer editor)]
     (.transact buffer f)))

@@ -1,7 +1,7 @@
 {
   "name": "paredit",
   "main": "./lib/paredit",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Paredit on atom",
   "activationEvents": [
     "paredit:forward-slurp",
@@ -17,6 +17,5 @@
   "engines": {
     "atom": ">=0.190.0 <2.0.0"
   },
-  "dependencies": {
-  }
+  "dependencies": {}
 }

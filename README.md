@@ -3,7 +3,7 @@
 
 Brings Paredit to atom!
 
-![A screenshot of your spankin' package](http://cl.ly/image/0w2o1j0E0r0E/Screen%20Shot%202014-07-16%20at%208.19.36%20PM.png)
+![Gif of paredit](http://zippy.gfycat.com/ClassicPaltryFrogmouth.gif)
 
 
 ## What's implemented
@@ -26,10 +26,10 @@ Getting Existing commands to work with ""
 
 ## Contributing
 
-Yes please!  
+Yes please!
 
-If your command isn't implemented, make an issue and begin
-tell everyone else you are working on it.
+If your command isn't implemented, make an issue to let others know
+you want to work on it.
 
 If you want to get a feel for the codebase, but don't think
 you can contribute just yet, we need tests on existing
@@ -38,7 +38,3 @@ that can easily be mocked. Look at `core-test.cljs` for the
 mocks.
 
 If in doubt open an issue and we can talk about it.
-
-This is part of a bigger endeavor to build an
-amazing Clojure IDE within atom. Contact me if you
-are interested in working on that as well.

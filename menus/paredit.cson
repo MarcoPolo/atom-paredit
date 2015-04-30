@@ -7,9 +7,14 @@
   {
     'label': 'Packages'
     'submenu': [
-      'label': 'paredit'
+      'label': 'Paredit'
       'submenu': [
+        { 'label': 'Forward Barf', 'command': 'paredit:forward-barf' }
         { 'label': 'Forward Slurp', 'command': 'paredit:forward-slurp' }
+        { 'label': 'Backward Barf', 'command': 'paredit:backward-barf' }
+        { 'label': 'Backward Slurp', 'command': 'paredit:backward-slurp' }
+        { 'label': 'Kill Line', 'command': 'paredit:kill-line' }
+        { 'label': 'Raise Expression', 'command': 'paredit:raise-sexp' }
       ]
     ]
   }
